@@ -1,24 +1,24 @@
 import copy
 import itertools
 import json
-import os.path
+import os
 import random
 from collections import deque
-from pathlib import Path
+from io import BytesIO
+import tempfile
 
 import cv2 as cv
 import numpy as np
+import streamlit as st
 import torch
 import torch.backends.cudnn
 import torch.nn as nn
 import torchvision.transforms as T
-
 from PIL import Image
 from torchvision.models.segmentation import deeplabv3_resnet101
 from tqdm import tqdm
 
 from utils_calibration import SoccerPitch
-# from SoccerNet.Evaluation.utils_calibration import SoccerPitch
 
 
 def generate_class_synthesis(semantic_mask, radius):
@@ -170,6 +170,7 @@ def synthesize_mask(semantic_mask, disk_radius):
 
     return disks
 
+
 class CustomNetwork:
 
     def __init__(self, checkpoint):
@@ -185,79 +186,93 @@ class CustomNetwork:
         trf = T.Compose(
             [
                 T.Resize(256),
-                #T.CenterCrop(224),
                 T.ToTensor(),
                 T.Normalize(
-                    mean = [0.485, 0.456, 0.406],
-                    std = [0.229, 0.224, 0.225]
-                    )
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]
+                )
             ]
         )
-        img = trf(img).unsqueeze(0).to(self.device) 
+        img = trf(img).unsqueeze(0).to(self.device)
         result = self.model(img)["out"].detach().squeeze(0).argmax(0)
         result = result.cpu().numpy().astype(np.uint8)
-        #print(result)
         return result
 
-if __name__ == "__main__":
-    soccernet = "./sample_data"
-    prediction = "./outputs"
-    split = "example"
-    masks = False
-    resolution_width = 455
-    resolution_height = 256
-    checkpoint = "./train_59.pt"
-    pp_radius = 4
-    pp_maxdists = 30
-    num_points_lines = 2
 
+def process_video(video_bytes, checkpoint, output_dir, resolution_width, resolution_height, pp_radius, pp_maxdists, num_points_lines, masks):
     lines_palette = [0, 0, 0]
     for line_class in SoccerPitch.lines_classes:
         lines_palette.extend(SoccerPitch.palette[line_class])
 
     model = CustomNetwork(checkpoint)
 
-    dataset_dir = os.path.join(soccernet, split)
-    if not os.path.exists(dataset_dir):
-        print("Invalid dataset path !")
-        exit(-1)
+    # Create a temporary file to store the video bytes
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video_file:
+        temp_video_file.write(video_bytes)
+        temp_video_path = temp_video_file.name
+
+    cap = cv.VideoCapture(temp_video_path)
+    if not cap.isOpened():
+        print("Error opening video stream or file")
+        return
 
     radius = pp_radius
     maxdists = pp_maxdists
-    
-    frames = [f for f in os.listdir(dataset_dir) if ".jpg" in f]
-    with tqdm(enumerate(frames), total=len(frames), ncols=160) as t:
-        for i, frame in t:
 
-            output_prediction_folder = os.path.join("output")
+    frame_index = 0
+    with tqdm(total=int(cap.get(cv.CAP_PROP_FRAME_COUNT)), ncols=160) as t:
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            output_prediction_folder = os.path.join(output_dir, "output")
             if not os.path.exists(output_prediction_folder):
                 os.makedirs(output_prediction_folder)
-            prediction = dict()
-            count = 0
 
-            frame_path = os.path.join(dataset_dir, frame)
-
-            frame_index = frame.split(".")[0]
-
-            image = Image.open(frame_path)
+            image = Image.fromarray(cv.cvtColor(frame, cv.COLOR_BGR2RGB))
 
             semlines = model.forward(image)
-            #print(semlines.shape)
-            # print("\nsemlines", type(semlines), semlines.shape)
+
             if masks:
                 mask = Image.fromarray(semlines.astype(np.uint8)).convert('P')
                 mask.putpalette(lines_palette)
-                mask_file = os.path.join(output_prediction_folder, frame)
+                mask_file = os.path.join(output_prediction_folder, f"{frame_index:04d}.jpg")
                 mask.convert("RGB").save(mask_file)
-            skeletons = generate_class_synthesis(semlines, radius)
 
+            skeletons = generate_class_synthesis(semlines, radius)
             extremities = get_line_extremities(skeletons, maxdists, resolution_width, resolution_height, num_points_lines)
 
-
-            prediction = extremities
-            count += 1
-
-            prediction_file = os.path.join(output_prediction_folder, f"{frame_index}.json")
+            prediction_file = os.path.join(output_prediction_folder, f"{frame_index:04d}.json")
             with open(prediction_file, "w") as f:
-                json.dump(prediction, f, indent=4)
+                json.dump(extremities, f, indent=4)
 
+            frame_index += 1
+            t.update(1)
+
+    cap.release()
+    cv.destroyAllWindows()
+    os.remove(temp_video_path)  # Clean up the temporary file
+
+
+def main():
+    st.title("Video Processing for Soccer Line Detection")
+
+    checkpoint = "./train_59.pt"
+    output_dir = "./outputs"
+    resolution_width = 455
+    resolution_height = 256
+    pp_radius = 4
+    pp_maxdists = 30
+    num_points_lines = 2
+    masks = False
+
+    video_file = st.file_uploader("Upload a video file", type=["mp4", "avi", "mov"])
+    if video_file is not None:
+        st.write("Processing video...")
+        video_bytes = video_file.read()
+        process_video(video_bytes, checkpoint, output_dir, resolution_width, resolution_height, pp_radius, pp_maxdists, num_points_lines, masks)
+        st.write("Processing complete. Check the output directory for results.")
+
+if __name__ == "__main__":
+    main()
