@@ -1,0 +1,59 @@
+{
+    "coordinates": [
+        { "lines": ["Side line right", "Side line top"], "point": { "x": 1047, "y": 2 } },
+        { "lines": ["Side line right", "Side line bottom"], "point": { "x": 1047, "y": 677 } },
+        { "lines": ["Side line right", "Big rect. right top"], "point": { "x": 1047, "y": 138 } },
+        { "lines": ["Side line right", "Big rect. right bottom"], "point": { "x": 1047, "y": 542 } },
+        { "lines": ["Side line right", "Small rect. right top"], "point": { "x": 1047, "y": 247 } },
+        { "lines": ["Side line right", "Small rect. right bottom"], "point": { "x": 1047, "y": 432 } },
+
+        { "lines": ["Small rect. right main", "Side line top"], "point": { "x": 995, "y": 2 } },
+        { "lines": ["Small rect. right main", "Side line bottom"], "point": { "x": 995, "y": 677 } },
+        { "lines": ["Small rect. right main", "Big rect. right top"], "point": { "x": 995, "y": 138 } },
+        { "lines": ["Small rect. right main", "Big rect. right bottom"], "point": { "x": 995, "y": 542 } },
+        { "lines": ["Small rect. right main", "Small rect. right top"], "point": { "x": 995, "y": 247 } },
+        { "lines": ["Small rect. right main", "Small rect. right bottom"], "point": { "x": 995, "y": 432 } },
+
+        { "lines": ["Big rect. right main", "Side line top"], "point": { "x": 885, "y": 2 } },
+        { "lines": ["Big rect. right main", "Side line bottom"], "point": { "x": 885, "y": 677 } },
+        { "lines": ["Big rect. right main", "Big rect. right top"], "point": { "x": 885, "y": 138 } },
+        { "lines": ["Big rect. right main", "Big rect. right bottom"], "point": { "x": 885, "y": 542 } },
+        { "lines": ["Big rect. right main", "Small rect. right top"], "point": { "x": 885, "y": 247 } },
+        { "lines": ["Big rect. right main", "Small rect. right bottom"], "point": { "x": 885, "y": 432 } },
+
+        { "lines": ["Middle line", "Side line top"], "point": { "x": 525, "y": 2 } },
+        { "lines": ["Middle line", "Side line bottom"], "point": { "x": 525, "y": 677 } },
+        { "lines": ["Middle line", "Big rect. right top"], "point": { "x": 525, "y": 138 } },
+        { "lines": ["Middle line", "Big rect. right bottom"], "point": { "x": 525, "y": 542 } },
+        { "lines": ["Middle line", "Big rect. left top"], "point": { "x": 525, "y": 138 } },
+        { "lines": ["Middle line", "Big rect. left bottom"], "point": { "x": 525, "y": 542 } },
+
+        { "lines": ["Big rect. left main", "Side line top"], "point": { "x": 165, "y": 2 } },
+        { "lines": ["Big rect. left main", "Side line bottom"], "point": { "x": 165, "y": 677 } },
+        { "lines": ["Big rect. left main", "Big rect. left top"], "point": { "x": 165, "y": 138 } },
+        { "lines": ["Big rect. left main", "Big rect. left bottom"], "point": { "x": 165, "y": 542 } },
+        { "lines": ["Big rect. left main", "Small rect. left top"], "point": { "x": 165, "y": 247 } },
+        { "lines": ["Big rect. left main", "Small rect. left bottom"], "point": { "x": 165, "y": 432 } },
+
+        { "lines": ["Small rect. left main", "Side line top"], "point": { "x": 55, "y": 2 } },
+        { "lines": ["Small rect. left main", "Side line bottom"], "point": { "x": 55, "y": 677 } },
+        { "lines": ["Small rect. left main", "Big rect. left top"], "point": { "x": 55, "y": 138 } },
+        { "lines": ["Small rect. left main", "Big rect. left bottom"], "point": { "x": 55, "y": 542 } },
+        { "lines": ["Small rect. left main", "Small rect. left top"], "point": { "x": 55, "y": 247 } },
+        { "lines": ["Small rect. left main", "Small rect. left bottom"], "point": { "x": 55, "y": 432 } },
+
+        { "lines": ["Side line left", "Side line top"], "point": { "x": 2, "y": 2 } },
+        { "lines": ["Side line left", "Side line bottom"], "point": { "x": 2, "y": 677 } },
+        { "lines": ["Side line left", "Big rect. left top"], "point": { "x": 2, "y": 138 } },
+        { "lines": ["Side line left", "Big rect. left bottom"], "point": { "x": 2, "y": 542 } },
+        { "lines": ["Side line left", "Small rect. left top"], "point": { "x": 2, "y": 247 } },
+        { "lines": ["Side line left", "Small rect. left bottom"], "point": { "x": 2, "y": 432 } },
+
+        { "lines": ["Big rect. left main", "Circle left"], "point": { "x": 201, "y": 340 } },
+        { "lines": ["Big rect. right main", "Circle right"], "point": { "x": 848, "y": 340 } },
+        { "lines": ["Middle line left", "Circle central"], "point": { "x": 433, "y": 340 } },
+        { "lines": ["Middle line right", "Circle central"], "point": { "x": 616, "y": 340 } },
+        { "lines": ["Middle line low", "Circle central"], "point": { "x": 525, "y": 432 } },
+        { "lines": ["Middle line high", "Circle central"], "point": { "x": 525, "y": 247 } }
+    ]
+}
