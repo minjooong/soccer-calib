@@ -1,6 +1,4 @@
 import copy
-import itertools
-import json
 import os
 import random
 from collections import deque
@@ -10,7 +8,6 @@ import cv2 as cv
 import numpy as np
 import torch
 import torch.backends.cudnn
-import torch.nn as nn
 import torchvision.transforms as T
 from PIL import Image
 from torchvision.models.segmentation import deeplabv3_resnet101
@@ -232,19 +229,10 @@ def process_video(video_bytes, checkpoint, output_dir, resolution_width, resolut
 
             semlines = model.forward(image)
 
-            # if masks:
-            #     mask = Image.fromarray(semlines.astype(np.uint8)).convert('P')
-            #     mask.putpalette(lines_palette)
-            #     mask_file = os.path.join(output_prediction_folder, f"{frame_index:04d}.jpg")
-            #     mask.convert("RGB").save(mask_file)
-
             skeletons = generate_class_synthesis(semlines, radius)
             extremities = get_line_extremities(skeletons, maxdists, resolution_width, resolution_height, num_points_lines)
 
-            # prediction_file = os.path.join(output_prediction_folder, f"{frame_index:04d}.json")
-            # with open(prediction_file, "w") as f:
-            #     json.dump(extremities, f, indent=4)
-            process_points_and_return_json(extremities, coordinates_data)
+            process_points_and_return_json(extremities, coordinates_data, frame_index, frame)
 
             frame_index += 1
             t.update(1)

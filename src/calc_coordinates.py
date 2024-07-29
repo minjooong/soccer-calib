@@ -1,18 +1,17 @@
 import cv2
 import numpy as np
-import json
 import calc_tools as ct
+import os
 
 IMG_WIDTH = 1920
 IMG_HEIGHT = 1080
 MIN_DISTANCE_THRESHOLD = 0.1
 OUTPUT_SIZE = (1050, 680)
 
-def process_points_and_return_json(points_data, coordinates_data):
+def process_points_and_return_json(points_data, coordinates_data, frame_index, frame):
     # Initialize necessary variables
     intersections = []
     line_params = {}
-    furthest_points = {}
 
     # Process points to calculate line parameters and intersections
     for key, points in points_data.items():
@@ -25,6 +24,10 @@ def process_points_and_return_json(points_data, coordinates_data):
 
         m, c = ct.compute_line_params(points[0], points[1], IMG_WIDTH, IMG_HEIGHT)
         line_params[key] = (m, c)
+
+    all_detected_points=[]
+    for key in points_data:
+        all_detected_points.append(key)
 
     # Process circle central points to find furthest points
     for key, points in points_data.items():
@@ -50,7 +53,7 @@ def process_points_and_return_json(points_data, coordinates_data):
                     highest_point = circle_point
 
             def add_intersection(line_name, point):
-                if 80 < point[0] < 1840 and 80 < point[1] < 1000:
+                if 30 < point[0] < 1890 and 30 < point[1] < 1050:
                     intersections.append({
                         "lines": [line_name, "Circle central"],
                         "point": {"x": point[0], "y": point[1]}
@@ -58,8 +61,9 @@ def process_points_and_return_json(points_data, coordinates_data):
 
             add_intersection("Middle line right", furthest_point_right)
             add_intersection("Middle line left", furthest_point_left)
-            add_intersection("Middle line low", lowest_point)
-            add_intersection("Middle line high", highest_point)
+            if "Middle line" in all_detected_points:
+                add_intersection("Middle line low", lowest_point)
+                add_intersection("Middle line high", highest_point)
 
     # Process circle right and left points
     def process_circle_side(key, line_key):
@@ -81,6 +85,34 @@ def process_points_and_return_json(points_data, coordinates_data):
     if "Circle left" in points_data:
         process_circle_side("Circle left", "Big rect. left main")
 
+    # 대칭점 계산
+    all_circle_points=[]
+    for key in intersections:
+        all_circle_points.append(key["lines"][0])
+
+    if "Middle line" in all_detected_points:
+        print(line_params["Middle line"][0])
+        if "Middle line right" in all_circle_points:
+            if not "Middle line left" in all_circle_points:
+                right = all_circle_points.index("Middle line right")
+                left = ct.find_symmetric_point(intersections[right]["point"], line_params["Middle line"])
+                intersections.append({
+                    "lines": ["Middle line left", "Circle central"],
+                    "point": {"x": left[0], "y": left[1]}
+                })
+
+        if "Middle line left" in all_circle_points:
+            if not "Middle line right" in all_circle_points:
+                left = all_circle_points.index("Middle line left")
+                right = ct.find_symmetric_point(intersections[left]["point"], line_params["Middle line"])
+                intersections.append({
+                    "lines": ["Middle line right", "Circle central"],
+                    "point": {"x": right[0], "y": right[1]}
+                })
+
+    # 여기까지 원 위의 점
+    # 여기부터 직선 교점
+
     # Find intersections between lines
     keys = list(line_params.keys())
     for i in range(len(keys)):
@@ -91,7 +123,7 @@ def process_points_and_return_json(points_data, coordinates_data):
             intersection = ct.find_intersection(m1, c1, m2, c2)
             if intersection:
                 x, y = intersection
-                if 0 <= x <= IMG_WIDTH and 0 <= y <= IMG_HEIGHT:
+                if -200 <= x <= IMG_WIDTH and -200 <= y <= IMG_HEIGHT:
                     intersections.append({
                         "lines": [key1, key2],
                         "point": {"x": x, "y": y}
@@ -100,42 +132,34 @@ def process_points_and_return_json(points_data, coordinates_data):
     # Find matching points
     src_points, dst_points = ct.find_matching_points(intersections, coordinates_data)
 
-    # Select src and dst points for perspective transform
-    sum_values = [x + y for x, y in src_points]
-    diff_values = [x - y for x, y in src_points]
-
-    min_sum_idx = np.argmin(sum_values)
-    max_sum_idx = np.argmax(sum_values)
-    diff_values[min_sum_idx] = np.inf
-    diff_values[max_sum_idx] = np.inf
-    min_diff_idx = np.argmin(diff_values)
-    diff_values[min_sum_idx] = -np.inf
-    diff_values[max_sum_idx] = -np.inf
-    max_diff_idx = np.argmax(diff_values)
-
-    selected_src_points = np.array([
-        src_points[min_sum_idx],
-        src_points[min_diff_idx],
-        src_points[max_sum_idx],
-        src_points[max_diff_idx]
-    ], dtype=np.float32)
-
-    selected_dst_points = np.array([
-        dst_points[min_sum_idx],
-        dst_points[min_diff_idx],
-        dst_points[max_sum_idx],
-        dst_points[max_diff_idx]
-    ], dtype=np.float32)
+    selected_src_points, selected_dst_points = ct.select_points(src_points, dst_points)
 
     # Calculate perspective transform matrix
     matrix = cv2.getPerspectiveTransform(selected_src_points, selected_dst_points)
-    print(matrix)
-    
 
 
+    # # Dot at minimap
+    # player_points = np.array([[1000, 600], [700, 400], [1000, 400], [700, 600]], dtype=np.float32)
 
-# 투시 변환 적용
-# transformed_image = cv2.warpPerspective(image_cv, matrix, OUTPUT_SIZE)
+    # # player_points를 (1, N, 2) 형태로 변환
+    # player_points = player_points.reshape(-1, 1, 2)
+    # # 투시 변환 적용하여 새로운 좌표 계산
+    # transformed_player_points = cv2.perspectiveTransform(player_points, matrix)
+    # # 원래 형태로 변환
+    # transformed_player_points = transformed_player_points.reshape(-1, 2)
+    # field_img = cv2.imread('./img/field.jpg')
 
-# 결과 이미지 저장
-# cv2.imwrite('./outputs/transformed_image.jpg', transformed_image)
+
+    # for point in transformed_player_points:
+    #     player_point = (int(point[0]), int(point[1]))
+    #     radius = 10
+    #     color = (255, 255, 255)
+    #     thickness = -1
+    #     transformed_image = cv2.circle(field_img, player_point, radius, color, thickness)
+
+
+    save_path = os.path.join('./outputs/minimap_tmp', f"{frame_index}.jpg")
+
+    image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    tv_image = cv2.warpPerspective(image, matrix, OUTPUT_SIZE)
+    cv2.imwrite(save_path, tv_image)

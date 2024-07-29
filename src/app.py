@@ -3,7 +3,7 @@ from line_extremities import process_video
 import json
 
 def main():
-    st.title("Video Processing for Soccer Line Detection")
+    st.title("Soccer Player Position Calculation")
 
     checkpoint = "./train_59.pt"
     output_dir = "./outputs"
@@ -12,7 +12,6 @@ def main():
     pp_radius = 4
     pp_maxdists = 30
     num_points_lines = 2
-    # masks = False
 
     with open('coordinates.json', 'r') as f:
         coordinates_data = json.load(f)
@@ -23,6 +22,8 @@ def main():
         video_bytes = video_file.read()
         process_video(video_bytes, checkpoint, output_dir, resolution_width, resolution_height, pp_radius, pp_maxdists, num_points_lines, coordinates_data)
         st.write("Processing complete. Check the output directory for results.")
+
+
 
 if __name__ == "__main__":
     main()
