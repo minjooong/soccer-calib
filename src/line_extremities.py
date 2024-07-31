@@ -194,6 +194,8 @@ class CustomNetwork:
         return result
 
 
+
+
 def process_video(video_bytes, checkpoint, output_dir, resolution_width, resolution_height, pp_radius, pp_maxdists, num_points_lines, coordinates_data):
     lines_palette = [0, 0, 0]
     for line_class in SoccerPitch.lines_classes:
@@ -214,16 +216,18 @@ def process_video(video_bytes, checkpoint, output_dir, resolution_width, resolut
     radius = pp_radius
     maxdists = pp_maxdists
 
+    all_frames_data = []
     frame_index = 0
+
     with tqdm(total=int(cap.get(cv.CAP_PROP_FRAME_COUNT)), ncols=160) as t:
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
 
-            output_prediction_folder = output_dir
-            if not os.path.exists(output_prediction_folder):
-                os.makedirs(output_prediction_folder)
+            # output_prediction_folder = output_dir
+            # if not os.path.exists(output_prediction_folder):
+            #     os.makedirs(output_prediction_folder)
 
             image = Image.fromarray(cv.cvtColor(frame, cv.COLOR_BGR2RGB))
 
@@ -232,11 +236,21 @@ def process_video(video_bytes, checkpoint, output_dir, resolution_width, resolut
             skeletons = generate_class_synthesis(semlines, radius)
             extremities = get_line_extremities(skeletons, maxdists, resolution_width, resolution_height, num_points_lines)
 
-            process_points_and_return_json(extremities, coordinates_data, frame_index, frame)
-
+            matrix_data = process_points_and_return_json(extremities, coordinates_data, frame_index, frame)
+            
+            # 현재 프레임 데이터를 리스트에 추가
+            all_frames_data.append({
+                "frame_index": frame_index,
+                "matrix_data": matrix_data
+            })
+            
             frame_index += 1
             t.update(1)
+
+
 
     cap.release()
     cv.destroyAllWindows()
     os.remove(temp_video_path)  # Clean up the temporary file
+
+    return {"frames": all_frames_data}

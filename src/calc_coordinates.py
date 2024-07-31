@@ -68,21 +68,28 @@ def process_points_and_return_json(points_data, coordinates_data, frame_index, f
     # Process circle right and left points
     def process_circle_side(key, line_key):
         max_distance = 0
-        for i in range(len(points_data[key])):
-            circle_point = (int(points_data[key][i]["x"] * IMG_WIDTH), int(points_data[key][i]["y"] * IMG_HEIGHT))
-            distance = ct.distance_from_line(circle_point, line_params[line_key])
-            if distance > max_distance:
-                max_distance = distance
-                furthest_point = circle_point
-        intersections.append({
-            "lines": [line_key, key],
-            "point": {"x": furthest_point[0], "y": furthest_point[1]}
-        })
+        furthest_point = None
+        if key in points_data:  # Ensure key exists in points_data
+            for i in range(len(points_data[key])):
+                circle_point = (
+                    int(points_data[key][i]["x"] * IMG_WIDTH),
+                    int(points_data[key][i]["y"] * IMG_HEIGHT)
+                )
+                distance = ct.distance_from_line(circle_point, line_params[line_key])
+                if distance > max_distance:
+                    max_distance = distance
+                    furthest_point = circle_point
+            if furthest_point:  # Ensure furthest_point is not None
+                intersections.append({
+                    "lines": [line_key, key],
+                    "point": {"x": furthest_point[0], "y": furthest_point[1]}
+                })
 
-    if "Circle right" in points_data:
+    # Check for existence of both keys in points_data before processing
+    if "Circle right" in points_data and "Big rect. right main" in line_params:
         process_circle_side("Circle right", "Big rect. right main")
 
-    if "Circle left" in points_data:
+    if "Circle left" in points_data and "Big rect. left main" in line_params:
         process_circle_side("Circle left", "Big rect. left main")
 
     # 대칭점 계산
@@ -90,8 +97,8 @@ def process_points_and_return_json(points_data, coordinates_data, frame_index, f
     for key in intersections:
         all_circle_points.append(key["lines"][0])
 
-    if "Middle line" in all_detected_points:
-        print(line_params["Middle line"][0])
+    if "Middle line" in line_params:
+        # print(line_params["Middle line"][0])
         if "Middle line right" in all_circle_points:
             if not "Middle line left" in all_circle_points:
                 right = all_circle_points.index("Middle line right")
@@ -136,6 +143,7 @@ def process_points_and_return_json(points_data, coordinates_data, frame_index, f
 
     # Calculate perspective transform matrix
     matrix = cv2.getPerspectiveTransform(selected_src_points, selected_dst_points)
+    return matrix
 
 
     # # Dot at minimap
@@ -158,8 +166,9 @@ def process_points_and_return_json(points_data, coordinates_data, frame_index, f
     #     transformed_image = cv2.circle(field_img, player_point, radius, color, thickness)
 
 
-    save_path = os.path.join('./outputs/minimap_tmp', f"{frame_index}.jpg")
+    # save file..
+    # save_path = os.path.join('./outputs/minimap_tmp', f"{frame_index}.jpg")
 
-    image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    tv_image = cv2.warpPerspective(image, matrix, OUTPUT_SIZE)
-    cv2.imwrite(save_path, tv_image)
+    # image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    # tv_image = cv2.warpPerspective(image, matrix, OUTPUT_SIZE)
+    # cv2.imwrite(save_path, tv_image)
