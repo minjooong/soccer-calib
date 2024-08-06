@@ -54,6 +54,12 @@
         { "lines": ["Middle line left", "Circle central"], "point": { "x": 433, "y": 340 } },
         { "lines": ["Middle line right", "Circle central"], "point": { "x": 616, "y": 340 } },
         { "lines": ["Middle line low", "Circle central"], "point": { "x": 525, "y": 432 } },
-        { "lines": ["Middle line high", "Circle central"], "point": { "x": 525, "y": 247 } }
+        { "lines": ["Middle line high", "Circle central"], "point": { "x": 525, "y": 247 } },
+
+        { "lines": ["Big rect. left main", "half"], "point": { "x": 165, "y": 340 } },
+        { "lines": ["Big rect. right main", "half"], "point": { "x": 885, "y": 340 } },
+
+        { "lines": ["Side line bottom", "Middle line left"], "point": { "x": 341, "y": 677 } },
+        { "lines": ["Side line bottom", "Middle line right"], "point": { "x": 341, "y": 707 } }
     ]
 }
