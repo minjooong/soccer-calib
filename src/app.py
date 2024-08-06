@@ -6,7 +6,6 @@ def main():
     st.title("Soccer Player Position Calculation")
 
     checkpoint = "./train_59.pt"
-    output_dir = "./outputs"
     resolution_width = 455
     resolution_height = 256
     pp_radius = 4
@@ -20,8 +19,9 @@ def main():
     if video_file is not None:
         st.write("Processing video...")
         video_bytes = video_file.read()
-        process_video(video_bytes, checkpoint, output_dir, resolution_width, resolution_height, pp_radius, pp_maxdists, num_points_lines, coordinates_data)
+        result = process_video(video_bytes, checkpoint, resolution_width, resolution_height, pp_radius, pp_maxdists, num_points_lines, coordinates_data)
         st.write("Processing complete. Check the output directory for results.")
+        st.json(result)
 
 
 

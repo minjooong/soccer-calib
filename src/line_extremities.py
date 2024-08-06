@@ -29,7 +29,6 @@ def generate_class_synthesis(semantic_mask, radius):
 
     return buckets
 
-
 def join_points(point_list, maxdist):
     polylines = []
 
@@ -74,7 +73,6 @@ def join_points(point_list, maxdist):
     polylines.append(list(polyline))
     return polylines
 
-
 def get_line_extremities(buckets, maxdist, width, height, num_points_lines):
     extremities = dict()
     for class_name, disks_list in buckets.items():
@@ -103,7 +101,6 @@ def get_line_extremities(buckets, maxdist, width, height, num_points_lines):
                 )
 
     return extremities
-
 
 def get_support_center(mask, start, disk_radius, min_support=0.1):
     x = int(start[0])
@@ -140,7 +137,6 @@ def get_support_center(mask, start, disk_radius, min_support=0.1):
 
     return support, result
 
-
 def synthesize_mask(semantic_mask, disk_radius):
     mask = semantic_mask.copy().astype(np.uint8)
     points = np.transpose(np.nonzero(mask))
@@ -165,12 +161,12 @@ def synthesize_mask(semantic_mask, disk_radius):
 
     return disks
 
-
 class CustomNetwork:
 
     def __init__(self, checkpoint):
         print("Loading model" + checkpoint)
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "mps" if torch.backends.mps.is_available() else "cpu"
+        #self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = deeplabv3_resnet101(num_classes=len(SoccerPitch.lines_classes) + 1, aux_loss=True)
         self.model.load_state_dict(torch.load(checkpoint, map_location=torch.device('cpu'))["model"], strict=False)
         self.model.to(self.device)
@@ -193,10 +189,7 @@ class CustomNetwork:
         result = result.cpu().numpy().astype(np.uint8)
         return result
 
-
-
-
-def process_video(video_bytes, checkpoint, output_dir, resolution_width, resolution_height, pp_radius, pp_maxdists, num_points_lines, coordinates_data):
+def process_video(video_bytes, checkpoint, resolution_width, resolution_height, pp_radius, pp_maxdists, num_points_lines, coordinates_data):
     lines_palette = [0, 0, 0]
     for line_class in SoccerPitch.lines_classes:
         lines_palette.extend(SoccerPitch.palette[line_class])
@@ -225,10 +218,6 @@ def process_video(video_bytes, checkpoint, output_dir, resolution_width, resolut
             if not ret:
                 break
 
-            # output_prediction_folder = output_dir
-            # if not os.path.exists(output_prediction_folder):
-            #     os.makedirs(output_prediction_folder)
-
             image = Image.fromarray(cv.cvtColor(frame, cv.COLOR_BGR2RGB))
 
             semlines = model.forward(image)
@@ -236,7 +225,7 @@ def process_video(video_bytes, checkpoint, output_dir, resolution_width, resolut
             skeletons = generate_class_synthesis(semlines, radius)
             extremities = get_line_extremities(skeletons, maxdists, resolution_width, resolution_height, num_points_lines)
 
-            matrix_data = process_points_and_return_json(extremities, coordinates_data, frame_index, frame)
+            matrix_data = process_points_and_return_json(extremities, coordinates_data)
             
             # 현재 프레임 데이터를 리스트에 추가
             all_frames_data.append({

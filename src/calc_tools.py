@@ -1,4 +1,6 @@
 import numpy as np
+from itertools import combinations
+import math
 
 # Function to compute the line parameters
 def compute_line_params(point1, point2, IMG_WIDTH, IMG_HEIGHT):
@@ -11,14 +13,16 @@ def compute_line_params(point1, point2, IMG_WIDTH, IMG_HEIGHT):
     c = y1 - m * x1
     return m, c
 
-# Function to find intersection of two lines
-def find_intersection(m1, c1, m2, c2):
+# 두 선의 교점 반환 함수
+def find_intersection(line1, line2):
+    m1, c1 = line1
+    m2, c2 = line2
     if m1 == m2:
-        return None  # Parallel lines
-    if m1 is None:  # First line is vertical
+        return None  # 평행할때
+    if m1 is None:  # 1번 선이 수직일떄
         x = c1
         y = m2 * x + c2
-    elif m2 is None:  # Second line is vertical
+    elif m2 is None:  # 2번 선이 수직일떄
         x = c2
         y = m1 * x + c1
     else:
@@ -83,58 +87,248 @@ def find_symmetric_point(point, middle_line_params):
 
     return (int(x_sym), int(y_sym))
 
-# 3개 이상 안 겹치게 하기
+# 중앙원 기준점 반환 함수
+def process_middle_circle(points, IMG_WIDTH, IMG_HEIGHT, intersections, line_params):
+    max_x = float('-inf')
+    min_x = float('inf')
+    max_y = float('-inf')
+    min_y = float('inf')
+
+    furthest_point_right = None
+    furthest_point_left = None
+    lowest_point = None
+    highest_point = None
+
+    for i in range(len(points)):
+        circle_point = (int(points[i]["x"] * IMG_WIDTH), int(points[i]["y"] * IMG_HEIGHT))
+
+        if circle_point[0] > max_x:
+            max_x = circle_point[0]
+            furthest_point_right = circle_point
+        if circle_point[0] < min_x:
+            min_x = circle_point[0]
+            furthest_point_left = circle_point
+        if circle_point[1] > max_y:
+            max_y = circle_point[1]
+            lowest_point = circle_point
+        if circle_point[1] < min_y:
+            min_y = circle_point[1]
+            highest_point = circle_point
+
+    if furthest_point_right and 20 < furthest_point_right[0] < 1900 and 20 < furthest_point_right[1] < 1060:
+        intersections.append({
+            "lines": ["Middle line right", "Circle central"],
+            "point": {"x": furthest_point_right[0], "y": furthest_point_right[1]}
+        })
+
+    if furthest_point_left and 20 < furthest_point_left[0] < 1900 and 20 < furthest_point_left[1] < 1060:
+        intersections.append({
+            "lines": ["Middle line left", "Circle central"],
+            "point": {"x": furthest_point_left[0], "y": furthest_point_left[1]}
+        })
+
+    if "Middle line" in line_params:
+        if lowest_point and 20 < lowest_point[0] < 1900 and 20 < lowest_point[1] < 1060:
+            intersections.append({
+                "lines": ["Middle line low", "Circle central"],
+                "point": {"x": lowest_point[0], "y": lowest_point[1]}
+            })
+
+        if highest_point and 20 < highest_point[0] < 1900 and 20 < highest_point[1] < 1060:
+            intersections.append({
+                "lines": ["Middle line high", "Circle central"],
+                "point": {"x": highest_point[0], "y": highest_point[1]}
+            })
+
+# 반원 점 구하는 함수
+def process_circle_right(points, IMG_WIDTH, IMG_HEIGHT, intersections, line_params):
+    max_distance = 0
+    furthest_point = None
+    for i in range(len(points)):
+        circle_point = (int(points[i]["x"] * IMG_WIDTH), int(points[i]["y"] * IMG_HEIGHT))
+        distance = distance_from_line(circle_point, line_params["Big rect. right main"])
+        if distance > max_distance:
+            max_distance = distance
+            furthest_point = circle_point
+    if furthest_point:
+        intersections.append({
+            "lines": ["Big rect. right main", "Circle right"],
+            "point": {"x": furthest_point[0], "y": furthest_point[1]}
+        })
+        # cv2.circle(image_cv, furthest_point, 10, (255, 255, 0), -1)
+
+def process_circle_left(points, IMG_WIDTH, IMG_HEIGHT, intersections, line_params):
+    max_distance = 0
+    furthest_point = None
+    for i in range(len(points)):
+        circle_point = (int(points[i]["x"] * IMG_WIDTH), int(points[i]["y"] * IMG_HEIGHT))
+        distance = distance_from_line(circle_point, line_params["Big rect. left main"])
+        if distance > max_distance:
+            max_distance = distance
+            furthest_point = circle_point
+    if furthest_point:
+        intersections.append({
+            "lines": ["Big rect. left main", "Circle left"],
+            "point": {"x": furthest_point[0], "y": furthest_point[1]}
+        })
+        # cv2.circle(image_cv, furthest_point, 10, (255, 255, 0), -1)
+
+def are_three_or_more_collinear(points):
+    if len(points) < 3:
+        return False
+    for i in range(len(points)):
+        for j in range(i + 1, len(points)):
+            for k in range(j + 1, len(points)):
+                (x1, y1), (x2, y2), (x3, y3) = points[i], points[j], points[k]
+                if (y2 - y1) * (x3 - x2) == (y3 - y2) * (x2 - x1):
+                    return True
+    return False
+
+def total_distance(points):
+    dist = 0
+    for i in range(len(points)):
+        for j in range(i + 1, len(points)):
+            dist += np.linalg.norm(points[i] - points[j])
+    return dist
+
 def select_points(src_points, dst_points):
-    x_values = [x for x, y in src_points]
-    y_values = [y for x, y in src_points]
+    if len(src_points) < 4 or len(dst_points) < 4:
+        return None, None
 
-    # Find indices for max and min x values
-    max_x_idx = np.argmax(x_values)
-    min_x_idx = np.argmin(x_values)
+    n = len(src_points)
+    max_dist = -1
+    best_combination = None
 
-    # Find indices for max and min y values
-    y_values[max_x_idx] = -np.inf
-    y_values[min_x_idx] = -np.inf
-    max_y_idx = np.argmax(y_values)
-    y_values[max_x_idx] = np.inf
-    y_values[min_x_idx] = np.inf
-    min_y_idx = np.argmin(y_values)
+    for indices in combinations(range(n), 4):
+        selected_src_points = [src_points[i] for i in indices]
+        selected_dst_points = [dst_points[i] for i in indices]
+        
+        if not are_three_or_more_collinear(selected_dst_points):
+            dist = total_distance(selected_dst_points)
+            if dist > max_dist:
+                max_dist = dist
+                best_combination = (selected_src_points, selected_dst_points)
+    
+    if best_combination is None:
+        return None, None
 
-    # Selected src_points and dst_points
-    selected_indices = [max_x_idx, min_x_idx, max_y_idx, min_y_idx]
-    selected_src_points = [
-        src_points[max_x_idx],
-        src_points[min_x_idx],
-        src_points[max_y_idx],
-        src_points[min_y_idx]
-    ]
-
-    selected_dst_points = [
-        dst_points[max_x_idx],
-        dst_points[min_x_idx],
-        dst_points[max_y_idx],
-        dst_points[min_y_idx]
-    ]
-
-    # Function to check if there are three or more identical x or y coordinates
-    def has_three_or_more_identical_coordinates(points):
-        x_counts = np.bincount([x for x, y in points])
-        y_counts = np.bincount([y for x, y in points])
-        return max(x_counts) >= 3 or max(y_counts) >= 3
-
-    # Check and adjust selected_dst_points if necessary
-    if has_three_or_more_identical_coordinates(selected_dst_points):
-        remaining_indices = set(range(len(dst_points))) - set(selected_indices)
-        for i, point in enumerate(selected_dst_points):
-            for idx in remaining_indices:
-                temp_points = selected_dst_points.copy()
-                temp_points[i] = dst_points[idx]
-                if not has_three_or_more_identical_coordinates(temp_points):
-                    selected_dst_points[i] = dst_points[idx]
-                    selected_src_points[i] = src_points[idx]  # Update the corresponding src point
-                    selected_indices[i] = idx  # Update the index
-                    break
-            if not has_three_or_more_identical_coordinates(selected_dst_points):
-                break
-
+    selected_src_points, selected_dst_points = best_combination
     return np.array(selected_src_points, dtype=np.float32), np.array(selected_dst_points, dtype=np.float32)
+
+
+def points_circle_center_to_side_line(data):
+    circle_right = None
+    circle_left = None
+    big_rect_right = None
+    big_rect_left = None
+    
+    for entry in data:
+        if 'Big rect. right main' in entry['lines'] and 'Big rect. right top' in entry['lines']:
+            big_rect_right = entry['point']
+        if 'Big rect. left main' in entry['lines'] and 'Big rect. left top' in entry['lines']:
+            big_rect_left = entry['point']
+        if 'Middle line right' in entry['lines']:
+            circle_right = entry['point']
+        if "Middle line left" in entry['lines']:
+            circle_left = entry['point']
+
+    return big_rect_right, big_rect_left, circle_right, circle_left
+
+def presume_side_intersection(big_rect, circle, direction, intersections, line_params, IMG_WIDTH, IMG_HEIGHT):
+    if big_rect and circle:
+        big_rect_tmp = {
+            'x': big_rect['x'] / IMG_WIDTH,
+            'y': big_rect['y'] / IMG_HEIGHT
+        }
+        circle_tmp = {
+            'x': circle['x'] / IMG_WIDTH,
+            'y': circle['y'] / IMG_HEIGHT
+        }
+        m, c = compute_line_params(big_rect_tmp, circle_tmp, IMG_WIDTH, IMG_HEIGHT)
+        line_key = f"big_rect_{direction}, circle_{direction}"
+        line_params[line_key] = (m, c)
+        base_intersection = find_intersection(line_params[line_key], line_params["Side line top"])
+        intersections.append({
+            "lines": [f"Side line {direction}", "Side line top"],
+            "point": {"x": base_intersection[0], "y": base_intersection[1]}
+        })
+
+        point_a = None
+        point_b = None
+
+        for intersection in intersections:
+            if set(intersection['lines']) == {f"Big rect. {direction} main", "Side line top"}:
+                point_a = intersection['point']
+            elif set(intersection['lines']) == {f"Big rect. {direction} main", f"Big rect. {direction} top"}:
+                point_b = intersection['point']
+
+        if point_a and point_b:
+            vector = (point_b['x'] - point_a['x'], point_b['y'] - point_a['y'])
+            new_intersection_x = base_intersection[0] + vector[0]
+            new_intersection_y = base_intersection[1] + vector[1]
+
+            new_intersection = (new_intersection_x, new_intersection_y)
+            intersections.append({
+                "lines": [f"Side line {direction}", f"Big rect. {direction} top"],
+                "point": {"x": new_intersection[0], "y": new_intersection[1]}
+            })
+
+
+# 수평선 중 기울기가 너무 다르면 제외
+def slope_diff_in_degrees(slope1, slope2):
+    return abs(math.degrees(math.atan(slope1)) - math.degrees(math.atan(slope2)))
+
+
+def presume_rect_half(intersections, line_key, side_line_key, big_rect_line_key, line_params):
+    if side_line_key not in line_params or big_rect_line_key not in line_params:
+        return
+
+    side_line_top = line_params[side_line_key]
+    big_rect_line = line_params[big_rect_line_key]
+    middle_point = None
+    for intersection in intersections:
+        if line_key in intersection['lines']:
+            middle_point = intersection['point']
+            break
+
+    if side_line_top and big_rect_line and middle_point:
+        m = side_line_top[0]
+        c = middle_point['y'] - m * middle_point['x']
+
+        line_params[big_rect_line_key + " center"] = (m, c)
+
+        intersection_point = find_intersection(big_rect_line, line_params[big_rect_line_key + " center"])
+
+        intersections.append({
+            "lines": [big_rect_line_key, "half"],
+            "point": {"x": intersection_point[0], "y": intersection_point[1]}
+        })
+
+        
+def presume_side_bottom_intersection(intersections, top_line_key, middle_line_key, middle_line_intersection_key, circle_intersection_key, side_line_bottom_key, line_params, IMG_WIDTH, IMG_HEIGHT):
+    side_line_top = middle_left = None
+
+    for intersection in intersections:
+        if top_line_key in intersection['lines'] and middle_line_key in intersection['lines']:
+            side_line_top = intersection['point']
+        if middle_line_intersection_key in intersection['lines'] and circle_intersection_key in intersection['lines']:
+            middle_left = intersection['point']
+
+    if side_line_bottom_key in line_params:
+        side_line_bottom = line_params[side_line_bottom_key]
+    else:
+        side_line_bottom = None
+
+    if side_line_top and middle_left and side_line_bottom:
+        side_line_top_x = side_line_top['x'] / IMG_WIDTH
+        side_line_top_y = side_line_top['y'] / IMG_HEIGHT
+        middle_left_x = middle_left['x'] / IMG_WIDTH
+        middle_left_y = middle_left['y'] / IMG_HEIGHT
+
+        m, c = compute_line_params({'x': side_line_top_x, 'y': side_line_top_y}, {'x': middle_left_x, 'y': middle_left_y}, IMG_WIDTH, IMG_HEIGHT)
+        line_params["Side top to circle left"] = (m, c)
+        intersection = find_intersection(line_params["Side top to circle left"], side_line_bottom)
+        intersections.append({
+            "lines": [side_line_bottom_key, middle_line_intersection_key],
+            "point": {"x": intersection[0], "y": intersection[1]}
+        })
