@@ -4,8 +4,8 @@ import time
 
 # Streamlit 페이지 설정
 st.title("유튜브 링크 제출 페이지")
-st.write("\n주소 복사 ↓↓↓↓")
-st.write("https://youtu.be/O9KANVeDafE")
+st.write("\nvideo_120 주소 ↓↓↓↓")
+st.write("https://youtu.be/NWWA8IEhg5Q?si=BoDNO70_0ZaYgoGm")
 FASTAPI_URL = st.text_input("Server 주소를 입력하세요:")
 
 # 유튜브 링크 입력
@@ -27,16 +27,19 @@ if st.button("제출"):
 
             # 상태 확인
             status = None
+            status_placeholder = st.empty()
+            attempt = 0
             while status != "completed":
                 status_response = requests.get(f"{FASTAPI_URL}/task_status/{task_id}")
                 if status_response.status_code == 200:
                     status_result = status_response.json()
                     status = status_result.get("status")
+                    attempt += 1
                     if status == "completed":
                         st.success("비디오 처리가 완료되었습니다.")
-                        st.json(status_result)  # 결과를 표시할 수 있음
+                        #st.json(status_result)  # 결과를 표시할 수 있음
                     else:
-                        st.write("처리 중... 상태:", status)
+                        status_placeholder.write(f"처리 중... 상태: {status} (예상 진행 상황: {attempt}/35)")
                         time.sleep(10)  # 10초 간격으로 상태 확인
                 else:
                     st.error("상태 조회 실패")

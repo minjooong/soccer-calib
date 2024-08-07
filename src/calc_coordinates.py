@@ -22,12 +22,12 @@ def process_points_and_return_json(points_data, coordinates_data):
         line_params[key] = (m, c)
 
 
-    # 수평선의 경우 기울기가 너무 다른 선은 제외한다.
-    relevant_slopes = {key: value[0] for key, value in line_params.items() if 'top' in key or 'bottom' in key}
-    avg_slope = sum(relevant_slopes.values()) / len(relevant_slopes)
-    filtered_line_params = {key: value for key, value in line_params.items()
-                            if key not in relevant_slopes or ct.slope_diff_in_degrees(value[0], avg_slope) <= 5}
-    line_params = filtered_line_params
+    # # 수평선의 경우 기울기가 너무 다른 선은 제외한다.
+    # relevant_slopes = {key: value[0] for key, value in line_params.items() if 'top' in key or 'bottom' in key}
+    # avg_slope = sum(relevant_slopes.values()) / len(relevant_slopes)
+    # filtered_line_params = {key: value for key, value in line_params.items()
+    #                         if key not in relevant_slopes or ct.slope_diff_in_degrees(value[0], avg_slope) <= 5}
+    # line_params = filtered_line_params
 
 
     # 원들의 기준점을 구한다.
@@ -51,7 +51,7 @@ def process_points_and_return_json(points_data, coordinates_data):
             intersection = ct.find_intersection(line_params[key1], line_params[key2])
             if intersection:
                 x, y = intersection
-                if -300 <= x <= IMG_WIDTH + 300 and -300 <= y <= IMG_HEIGHT + 300:
+                if -500 <= x <= IMG_WIDTH + 500 and -300 <= y <= IMG_HEIGHT + 300:
                     intersections.append({
                         "lines": [key1, key2],
                         "point": {"x": x, "y": y}

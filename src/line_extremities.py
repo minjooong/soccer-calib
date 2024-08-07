@@ -194,52 +194,60 @@ def process_video(video_bytes, checkpoint, resolution_width, resolution_height, 
     for line_class in SoccerPitch.lines_classes:
         lines_palette.extend(SoccerPitch.palette[line_class])
 
-    model = CustomNetwork(checkpoint)
+    try:
+        model = CustomNetwork(checkpoint)
+    except Exception as e:
+        return {"error": f"Error loading model: {e}"}
 
-    # Create a temporary file to store the video bytes
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video_file:
-        temp_video_file.write(video_bytes)
-        temp_video_path = temp_video_file.name
+    try:
+        # Create a temporary file to store the video bytes
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video_file:
+            temp_video_file.write(video_bytes)
+            temp_video_path = temp_video_file.name
 
-    cap = cv.VideoCapture(temp_video_path)
-    if not cap.isOpened():
-        print("Error opening video stream or file")
-        return
+        cap = cv.VideoCapture(temp_video_path)
+        if not cap.isOpened():
+            return {"error": "Error opening video stream or file"}
 
-    radius = pp_radius
-    maxdists = pp_maxdists
+        radius = pp_radius
+        maxdists = pp_maxdists
 
-    all_frames_data = []
-    frame_index = 0
+        all_frames_data = []
+        frame_index = 0
 
-    with tqdm(total=int(cap.get(cv.CAP_PROP_FRAME_COUNT)), ncols=160) as t:
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
+        with tqdm(total=int(cap.get(cv.CAP_PROP_FRAME_COUNT)), ncols=160) as t:
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
 
-            image = Image.fromarray(cv.cvtColor(frame, cv.COLOR_BGR2RGB))
+                try:
+                    image = Image.fromarray(cv.cvtColor(frame, cv.COLOR_BGR2RGB))
 
-            semlines = model.forward(image)
+                    semlines = model.forward(image)
 
-            skeletons = generate_class_synthesis(semlines, radius)
-            extremities = get_line_extremities(skeletons, maxdists, resolution_width, resolution_height, num_points_lines)
+                    skeletons = generate_class_synthesis(semlines, radius)
+                    extremities = get_line_extremities(skeletons, maxdists, resolution_width, resolution_height, num_points_lines)
 
-            matrix_data = process_points_and_return_json(extremities, coordinates_data)
-            
-            # 현재 프레임 데이터를 리스트에 추가
-            all_frames_data.append({
-                "frame_index": frame_index,
-                "matrix_data": matrix_data
-            })
-            
-            frame_index += 1
-            t.update(1)
+                    matrix_data = process_points_and_return_json(extremities, coordinates_data)
 
+                    # 현재 프레임 데이터를 리스트에 추가
+                    all_frames_data.append({
+                        "frame_index": frame_index,
+                        "matrix_data": matrix_data
+                    })
 
+                except Exception as e:
+                    return {"error": f"Error processing frame {frame_index}: {e}"}
 
-    cap.release()
-    cv.destroyAllWindows()
-    os.remove(temp_video_path)  # Clean up the temporary file
+                frame_index += 1
+                t.update(1)
+
+    except Exception as e:
+        return {"error": f"Error processing video: {e}"}
+    finally:
+        cap.release()
+        cv.destroyAllWindows()
+        os.remove(temp_video_path)  # Clean up the temporary file
 
     return {"frames": all_frames_data}
