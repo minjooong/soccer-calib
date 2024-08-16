@@ -4,33 +4,6 @@ import cv2
 import numpy as np
 from scipy.signal import savgol_filter
 
-def velocity_thresholding(data, threshold=10.0):
-    # 데이터의 길이
-    n = len(data)
-
-    # 속도(변화율) 계산
-    velocities = np.abs(np.diff(data))
-
-    # 이상치 식별
-    outliers = np.where(velocities > threshold)[0] + 1  # diff로 인해 인덱스가 1 작음
-
-    # 이상치 대체
-    cleaned_data = data.copy()
-    for i in outliers:
-        if i == 0:
-            # 첫 번째 요소에서의 이상치 처리
-            cleaned_data[i] = data[i+1]
-        elif i == n-1:
-            # 마지막 요소에서의 이상치 처리
-            cleaned_data[i] = data[i-1]
-        else:
-            # 양쪽 이웃의 평균으로 대체
-            cleaned_data[i] = (data[i-1] + data[i+1]) / 2
-
-    return cleaned_data
-
-
-
 def create_smooth_video(data, label_path):
     file_names = os.listdir(label_path)
 
@@ -75,32 +48,25 @@ def create_smooth_video(data, label_path):
 
         player_points = []
         player_indices = []
-        player_teams = []
-
         for row in data_array:
             player_x = row[1]
             player_y = row[2]
             player_height = row[4]
             player_idx = row[5]
-
             player_point = [int(player_x), int(player_y + (player_height / 2))] #[int(player_x * 1920), int((player_y + (player_height / 2)) * 1080)]
             player_points.append(player_point)
             player_indices.append(player_idx)
-            player_teams.append(row[6])
-
-    
 
         player_points = np.array(player_points, dtype=np.float32).reshape(-1, 1, 2)
         transformed_player_points = cv2.perspectiveTransform(player_points, transform_matrix)
         transformed_player_points = transformed_player_points.reshape(-1, 2)
 
         frame_data = []
-        for idx, point, team in zip(player_indices, transformed_player_points, player_teams):
+        for idx, point in zip(player_indices, transformed_player_points):
             frame_data.append({
                 'id': int(idx),
                 'x': float(round(point[0], 2)),
-                'y': float(round(point[1], 2)),
-                'team': int(team)
+                'y': float(round(point[1], 2))
             })
         
         transformed_data[f"Frame_{i+1}"] = frame_data
@@ -113,43 +79,38 @@ def create_smooth_video(data, label_path):
         for player in positions:
             if player['id'] not in player_positions:
                 player_positions[player['id']] = {'x': [], 'y': []}
-                player_start_frames[player['id']] = {'frame_idx': frame_idx, 'team': player['team']}  # Record the starting frame for each player
+                player_start_frames[player['id']] = frame_idx  # Record the starting frame for each player
             player_positions[player['id']]['x'].append(player['x'])
             player_positions[player['id']]['y'].append(player['y'])
 
 
     # raw data save
-    # import pickle
-    # with open('raw_player_positions_31.pkl', 'wb') as file:
-    #     pickle.dump(player_positions, file)
+    import pickle
+    with open('raw_player_positions_31.pkl', 'wb') as file:
+        pickle.dump(player_positions, file)
 
 
 
     # Apply Savitzky-Golay filter to smooth the positions
-    window_length_first = 60  # Use a larger window length for more smoothing
+    window_length_first = 23  # Use a larger window length for more smoothing
     polyorder_first = 1      # Use a higher polynomial order for smoother results
 
-    window_length_second = 60
-    polyorder_second = 2
+    window_length_second = 17
+    polyorder_second = 1
+
+    window_length_third = 7
+    polyorder_third = 2
 
 
     smoothed_positions = {}
     for player_id, coords in player_positions.items():
         if len(coords['x']) >= window_length_first:
-            x1 = velocity_thresholding(coords['x'])
-            y1 = velocity_thresholding(coords['y'])
-
-            x2 = savgol_filter(x1, window_length_first, polyorder_first)
-            y2 = savgol_filter(y1, window_length_first, polyorder_first)
-
-            smoothed_x = savgol_filter(x2, window_length_second, polyorder_second)
-            smoothed_y = savgol_filter(y2, window_length_second, polyorder_second)
-            
+            smoothed_x = savgol_filter(savgol_filter(savgol_filter(coords['x'], window_length_first, polyorder_first), window_length_second, polyorder_second), window_length_third, polyorder_third)
+            smoothed_y = savgol_filter(savgol_filter(savgol_filter(coords['y'], window_length_first, polyorder_first), window_length_second, polyorder_second), window_length_third, polyorder_third)
             smoothed_positions[player_id] = {
                 'x': smoothed_x,
                 'y': smoothed_y,
-                'start_frame': player_start_frames[player_id]['frame_idx'],
-                'team': player_start_frames[player_id]['team']
+                'start_frame': player_start_frames[player_id]
             }
 
     # Prepare data for animation
@@ -165,8 +126,7 @@ def create_smooth_video(data, label_path):
                 frame_data.append({
                     'id': player_id,
                     'x': coords['x'][relative_idx],
-                    'y': coords['y'][relative_idx],
-                    'team': coords['team']
+                    'y': coords['y'][relative_idx]
                 })
         frames[f"Frame_{frame_idx+1}"] = frame_data
 

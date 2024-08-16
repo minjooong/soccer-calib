@@ -4,8 +4,8 @@ import time
 
 # Streamlit 페이지 설정
 st.title("유튜브 링크 제출 페이지")
-st.write("\nvideo_120 주소 ↓↓↓↓")
-st.write("https://youtu.be/NWWA8IEhg5Q?si=BoDNO70_0ZaYgoGm")
+st.write("\nvideo_31 주소 ↓↓↓↓")
+st.write("https://youtu.be/3AVLwct6V0E?si=VMk3nsgLII8y2kHq")
 FASTAPI_URL = st.text_input("Server 주소를 입력하세요:")
 
 # 유튜브 링크 입력
